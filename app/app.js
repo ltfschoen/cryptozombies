@@ -2,11 +2,13 @@ const Web3 = require('web3');
 const fs = require('fs');
 
 const web3 = new Web3();
-web3.setProvider(new Web3.providers.HttpProvider("http://localhost:8545"));
+// Use Websocket provider to gain support for event subscriptions
+web3.setProvider(new Web3(new Web3.providers.WebsocketProvider('http://127.0.0.1:8545')));
+// web3.setProvider(new Web3.providers.HttpProvider("http://localhost:8545"));
 // Configure sender account
 web3.eth.defaultAccount = web3.eth.accounts[0];
-console.log(`Web3.js version: ${web3.version.api}`);
-console.log(`Platform details: ${web3.version.node}`);
+console.log(`Web3.js version: ${web3.version.api ? web3.version.api : web3.version}`);
+console.log(`Platform details: ${web3.version.node ? web3.version.node : process.platform}`);
 console.log("Press CTRL+C to exit");
 // Access contract
 const zombieFactoryContractCompiledJSON = JSON.parse(fs.readFileSync('build/contracts/ZombieFactory.json', 'utf8'));
@@ -14,24 +16,65 @@ const zombieFactoryContractCompiledJSON = JSON.parse(fs.readFileSync('build/cont
 const contractABI = zombieFactoryContractCompiledJSON["abi"];
 // Contract address on Ethereum after deploying
 const contractAddress = zombieFactoryContractCompiledJSON["networks"]["1000"]["address"];
-const zombieFactoryContract = web3.eth.contract(contractABI);
+let zombieFactoryContract;
+if (web3.eth.contract) {
+  zombieFactoryContract = web3.eth.contract(contractABI);
+} else {
+  zombieFactoryContract = new web3.eth.Contract(contractABI, contractAddress);
+}
+
 // Instance with access to public functions and events of the contract
-const zombieFactoryInstance = zombieFactoryContract.at(contractAddress);
-// User input
-const name = "luke";
-// Call the contract createRandomZombie function
-zombieFactoryInstance.createRandomZombie(name);
+let zombieFactoryInstance;
+if (typeof zombieFactoryContract.at === 'function') {
+  zombieFactoryInstance = zombieFactoryContract.at(contractAddress);
+} else {
+  zombieFactoryInstance = zombieFactoryContract;
+}
 
 // Event listener for the NewZombie event. Update the UI
-const event = zombieFactoryInstance.NewZombie((error, result) => {
-  if (error) return;
-  zombie = generateZombie(result.zombieId, result.name, result.dna);
-  console.log("Created Zombie:\n", JSON.stringify(zombie, null, 2));
-  return zombie;
-})
+let event;
+
+if (typeof zombieFactoryInstance.events !== 'object') {
+  event = zombieFactoryInstance.NewZombie((error, result) => {
+    if (error) { console.log(error); return };
+    zombie = generateZombie(result.zombieId, result.name, result.dna);
+    console.log("Created Zombie:\n", JSON.stringify(zombie, null, 2));
+    return zombie;
+  })
+} else {
+  event = zombieFactoryInstance.events.allEvents({ fromBlock: 0 }, (error, result) => {
+    if (error) { console.log(error); return; };
+    zombie = generateZombie(result.zombieId, result.name, result.dna);
+    console.log("Created Zombie:\n", JSON.stringify(zombie, null, 2));
+    return zombie;
+  })
+  .on('data', function(event){
+    console.log(event); // same results as the optional callback above
+  })
+  .on('changed', function(event){
+      // remove event from local database
+  })
+  .on('error', console.error);
+}
+
+// User input
+const name = "luke";
+
+if (typeof zombieFactoryContract.methods !== 'object') {
+  // Call the contract createRandomZombie function
+  zombieFactoryInstance.createRandomZombie(name);
+} else {
+  console.log('Calling contract to create a zombie');
+  zombieFactoryInstance.methods.createRandomZombie(name)
+    .call({ from: web3.eth.accounts[0] })
+    .then(function(result){
+      console.log(result);
+    });
+}
 
 // Update image with Zombie DNA
 function generateZombie(id, name, dna) {
+  console.log('Generating the zombie');
   let dnaStr = String(dna);
   // Pad the DNA with leading zeroes if less than 16 characters
   while (dnaStr.length < 16) {
