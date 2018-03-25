@@ -5,7 +5,7 @@
 
 ## Prerequisites
 
-* Install Node.js 8.x.x with NVM
+* Install Node.js 9.x.x with NVM
 * Install dependencies
 
 ## Development - Installation and Building
@@ -13,7 +13,7 @@
 * Install Truffle, Ganache CLI ethereum client for local development, and Yarn
 
 ```bash
-npm install -g truffle ganache-cli;
+npm install -g truffle ganache-cli web3@0.20.2;
 brew install yarn
 ```
 
@@ -40,6 +40,12 @@ ganache-cli \
 ```bash
 truffle compile;
 truffle migrate --network development
+```
+
+* Interact with smart contract.
+
+```bash
+node app/app.js
 ```
 
 * Debug

@@ -1,0 +1,10 @@
+{
+  "name": "cryptozombies",
+  "version": "1.0.0",
+  "main": "app/app.js",
+  "author": "Luke Schoen <ltfschoen@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "web3": "0.20.2"
+  }
+}
