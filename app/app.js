@@ -67,7 +67,7 @@ if (typeof zombieFactoryContract.methods !== 'object') {
   console.log('Calling contract to create a zombie');
   zombieFactoryInstance.methods.createRandomZombie(name)
     .call({ from: web3.eth.accounts[0] })
-    .then(function(result){
+    .then((result) => {
       console.log(result);
     });
 }
